@@ -1,0 +1,107 @@
+[
+  {
+    "id": "TC-DNSF-001",
+    "ac": "AC1",
+    "text": "Given a valid X-Dnsfilter-Api-Key header, when dnsfilter_list_organizations is called, then it returns the organizations visible to that key (id, name, type), paginated",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-002",
+    "ac": "AC2",
+    "text": "Given a valid API key and an organization id, when dnsfilter_get_organization is called, then it returns that organization's basic information",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-003",
+    "ac": "AC3",
+    "text": "Given a valid API key, when dnsfilter_list_networks is called, then it returns networks with organization_id and policy_id populated, and no secret_key field anywhere in the response",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-004",
+    "ac": "AC4",
+    "text": "Given a valid API key and a policy id, when dnsfilter_get_policy is called, then it returns the full policy configuration: allow/block domain lists, blocked category ids, per-engine safe-search flags, YouTube restriction, allow-list-only",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-005",
+    "ac": "AC5",
+    "text": "Given a valid API key and an organization id, when dnsfilter_list_policies is called, then it returns the policies defined for that organization",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-006",
+    "ac": "AC6",
+    "text": "Given a valid API key, when dnsfilter_list_categories is called, then it returns the content category taxonomy including the security flag per category",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-007",
+    "ac": "AC7",
+    "text": "Given a valid API key and a time range, when dnsfilter_get_traffic_summary is called with metric=requests and again with metric=threats, then both return a bucketed count series for the window",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-008",
+    "ac": "AC8",
+    "text": "Given a valid API key and a time range, when dnsfilter_get_top_report is called with each of dimension=categories|domains|networks|organizations, then it returns a ranked top-N list for that dimension",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-009",
+    "ac": "AC9",
+    "text": "Given the X-Dnsfilter-Api-Key header is missing, when any tool is called, then it returns a structured unauthorized error and makes zero outbound calls to DNSFilter",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-010",
+    "ac": "AC10",
+    "text": "Given DNSFilter responds 429, when any tool is called, then the service retries with backoff honoring Retry-After, and a persisting 429 surfaces a structured rate_limited error, never a raw exception",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-011",
+    "ac": "AC11",
+    "text": "Given an organization/network/policy id that DNSFilter returns 404 for, when the matching get_* tool is called, then it returns a structured not_found error, not an empty 200 or a 500",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-012",
+    "ac": "AC12",
+    "text": "Given a list_* tool whose underlying DNSFilter query matches nothing, when it is called, then it returns an empty items collection, not a not_found error",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-013",
+    "ac": "AC13",
+    "text": "Given two concurrent tool calls carrying two different X-Dnsfilter-Api-Key values, when both are in flight at once, then neither call's outbound request to DNSFilter ever carries the other call's API key",
+    "type": "auto",
+    "tests": []
+  },
+  {
+    "id": "TC-DNSF-014",
+    "ac": "AC7",
+    "text": "Given a real DNSFilter tenant and account, when dnsfilter_get_traffic_summary and dnsfilter_get_top_report are called via tools/call for a given window, then the numbers match what the DNSFilter dashboard shows for that same tenant and window",
+    "type": "manual",
+    "steps": [
+      "Obtain a real DNSFilter trial/test account and API key (needs a real vendor account — not available at design time)",
+      "Call tools/call for dnsfilter_get_traffic_summary (metric=requests, then metric=threats) for a fixed from/to window",
+      "Call tools/call for dnsfilter_get_top_report for each dimension for the same window",
+      "Log into the DNSFilter dashboard for the same account and read the equivalent reports for the same window"
+    ],
+    "expect": "The counts/top-N entries returned by the tools match what the DNSFilter dashboard displays for the same account and window",
+    "result": "untested"
+  }
+]
