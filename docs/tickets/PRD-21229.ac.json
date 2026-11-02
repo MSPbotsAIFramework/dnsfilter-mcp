@@ -1,0 +1,145 @@
+[
+  {
+    "id": "TC-DNSF-001",
+    "ac": "AC1",
+    "text": "Given a valid X-Dnsfilter-Api-Key header, when dnsfilter_list_organizations is called, then it returns the organizations visible to that key (id, name, type), paginated",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_list_organizations_returns_visible_orgs_paginated"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_list_organizations_returns_visible_orgs_paginated -> 1 passed; respx-mocked GET /v1/organizations, asserts items==[{id:1,name,type:'msp'},{id:2,...,type:'normal'}] and has_more=false"
+  },
+  {
+    "id": "TC-DNSF-002",
+    "ac": "AC2",
+    "text": "Given a valid API key and an organization id, when dnsfilter_get_organization is called, then it returns that organization's basic information",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_get_organization_returns_basic_info"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_get_organization_returns_basic_info -> 1 passed; respx-mocked GET /v1/organizations/2, asserts full body equality"
+  },
+  {
+    "id": "TC-DNSF-003",
+    "ac": "AC3",
+    "text": "Given a valid API key, when dnsfilter_list_networks is called, then it returns networks with organization_id and policy_id populated, and no secret_key field anywhere in the response",
+    "type": "auto",
+    "tests": [
+      "tests/test_tools.py::test_list_networks_populates_ids_and_strips_secret_key",
+      "tests/test_tools.py::test_list_networks_filters_by_organization_id_client_side",
+      "tests/test_tools.py::test_get_network_strips_secret_key"
+    ],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k 'test_list_networks_populates_ids_and_strips_secret_key or test_list_networks_filters_by_organization_id_client_side or test_get_network_strips_secret_key' -> 3 passed; asserts raw response text never contains 'secret_key' or the mocked secret value"
+  },
+  {
+    "id": "TC-DNSF-004",
+    "ac": "AC4",
+    "text": "Given a valid API key and a policy id, when dnsfilter_get_policy is called, then it returns the full policy configuration (allow/block lists, blocked categories, safe-search flags, YouTube restriction, allow-list-only)",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_get_policy_returns_full_configuration"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_get_policy_returns_full_configuration -> 1 passed; asserts whitelist_domains, blacklist_domains, blacklist_categories, allow_list_only, google_safesearch, youtube_restricted, youtube_restricted_level, network_ids"
+  },
+  {
+    "id": "TC-DNSF-005",
+    "ac": "AC5",
+    "text": "Given a valid API key and an organization id, when dnsfilter_list_policies is called, then it returns the policies defined for that organization",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_list_policies_scoped_to_organization"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_list_policies_scoped_to_organization -> 1 passed; asserts the organization_id query param sent to DNSFilter and the returned items"
+  },
+  {
+    "id": "TC-DNSF-006",
+    "ac": "AC6",
+    "text": "Given a valid API key, when dnsfilter_list_categories is called, then it returns the content category taxonomy with the security flag per category",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_list_categories_includes_security_flag"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_list_categories_includes_security_flag -> 1 passed"
+  },
+  {
+    "id": "TC-DNSF-007",
+    "ac": "AC7",
+    "text": "Given a valid API key and a time range, when dnsfilter_get_traffic_summary is called with metric=requests and again with metric=threats, then both return a bucketed count series for the window",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_get_traffic_summary_both_metrics"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_get_traffic_summary_both_metrics -> 1 passed; both /v1/traffic_reports/total_requests and total_threats mocked, asserts buckets+total for each"
+  },
+  {
+    "id": "TC-DNSF-008",
+    "ac": "AC8",
+    "text": "Given a valid API key and a time range, when dnsfilter_get_top_report is called with each of dimension=categories|domains|networks|organizations, then it returns a ranked top-N list for that dimension",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_get_top_report_all_dimensions"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_get_top_report_all_dimensions -> 1 passed; all 4 dimensions mocked and asserted, including that dimension=organizations never sends security_report (vendor endpoint has no such filter)"
+  },
+  {
+    "id": "TC-DNSF-009",
+    "ac": "AC9",
+    "text": "Given the X-Dnsfilter-Api-Key header is missing, when any tool is called, then it returns a structured unauthorized error and makes zero outbound calls to DNSFilter",
+    "type": "auto",
+    "tests": [
+      "tests/test_tools.py::test_no_credentials_returns_not_configured_without_calling_api",
+      "tests/test_middleware.py::test_missing_header_returns_401_with_required_headers_listed"
+    ],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k 'test_no_credentials_returns_not_configured_without_calling_api or test_missing_header_returns_401_with_required_headers_listed' -> 2 passed; tool-level test uses a respx router with no mocked routes and an AssertionError side_effect to prove zero outbound calls; middleware test asserts HTTP 401 + required_headers list. Also confirmed live: curl -X POST /mcp without the header against a running `python -m dnsfilter_mcp` -> HTTP 401"
+  },
+  {
+    "id": "TC-DNSF-010",
+    "ac": "AC10",
+    "text": "Given DNSFilter responds 429, when any tool is called, then the service retries with backoff honoring Retry-After, and a persisting 429 surfaces a structured rate_limited error, never a raw exception",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_rate_limit_retries_then_surfaces_rate_limited"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_rate_limit_retries_then_surfaces_rate_limited -> 1 passed; respx route always returns 429 with Retry-After:0, asserts route.call_count==4 (1 initial + 3 retries) and final body is {error:{code:rate_limited,retryable:true}}"
+  },
+  {
+    "id": "TC-DNSF-011",
+    "ac": "AC11",
+    "text": "Given an organization/network/policy id that DNSFilter returns 404 for, when the matching get_* tool is called, then it returns a structured not_found error, not an empty 200 or a 500",
+    "type": "auto",
+    "tests": [
+      "tests/test_tools.py::test_get_organization_not_found",
+      "tests/test_tools.py::test_get_network_not_found",
+      "tests/test_tools.py::test_get_policy_not_found"
+    ],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k 'test_get_organization_not_found or test_get_network_not_found or test_get_policy_not_found' -> 3 passed; each mocks a 404 from DNSFilter and asserts {error:{code:not_found,retryable:false}}"
+  },
+  {
+    "id": "TC-DNSF-012",
+    "ac": "AC12",
+    "text": "Given a list_* tool whose underlying DNSFilter query matches nothing, when it is called, then it returns an empty items collection, not a not_found error",
+    "type": "auto",
+    "tests": ["tests/test_tools.py::test_list_tool_empty_result_is_not_not_found"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_list_tool_empty_result_is_not_not_found -> 1 passed; mocked 200 with data:[] -> asserts body == {items:[],has_more:false}, no error key"
+  },
+  {
+    "id": "TC-DNSF-013",
+    "ac": "AC13",
+    "text": "Given two concurrent tool calls carrying two different X-Dnsfilter-Api-Key values, when both are in flight at once, then neither call's outbound request to DNSFilter ever carries the other call's API key",
+    "type": "auto",
+    "tests": ["tests/test_middleware.py::test_concurrent_requests_never_cross_credentials"],
+    "result": "pass",
+    "evidence": "uv run pytest -v -k test_concurrent_requests_never_cross_credentials -> 1 passed; asyncio.gather runs two requests concurrently through GatewayTokenMiddleware with an explicit await asyncio.sleep(0) interleave point, asserts each request's contextvar-read key matches only its own header value"
+  },
+  {
+    "id": "TC-DNSF-014",
+    "ac": "AC7",
+    "text": "Given a real DNSFilter tenant and account, when dnsfilter_get_traffic_summary and dnsfilter_get_top_report are called via tools/call for a given window, then the numbers match what the DNSFilter dashboard shows for that same tenant and window",
+    "type": "manual",
+    "steps": [
+      "Obtain a real DNSFilter trial/test account and API key (needs a real vendor account — not available at design time)",
+      "Call tools/call for dnsfilter_get_traffic_summary (metric=requests, then metric=threats) for a fixed from/to window",
+      "Call tools/call for dnsfilter_get_top_report for each dimension for the same window",
+      "Log into the DNSFilter dashboard for the same account and read the equivalent reports for the same window"
+    ],
+    "expect": "The counts/top-N entries returned by the tools match what the DNSFilter dashboard displays for the same account and window",
+    "result": "untested",
+    "reason": "No real DNSFilter account available in this unattended dev run (needs a real vendor account per SOP \"no test account is not a blocker\" — does not block merge, dev-done, or INT publish). Field-mapping assumptions this test would confirm are documented in README Known Gaps and docs/tickets/PRD-21229.md Risks & dependencies."
+  }
+]
